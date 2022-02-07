@@ -58,7 +58,6 @@ class CabDriver():
 
 
     ## Getting number of requests
-
     def requests(self, state):
         """Determining the number of requests basis the location.
         Use the table specified in the MDP and complete for rest of the locations"""
@@ -84,17 +83,64 @@ class CabDriver():
 
         return possible_actions_index,actions
 
+    def calc_new_time_and_day(time_of_day, day_of_week, travel_time):
+        """Return new time of day and day of the week after adding the travel time."""
+        time_of_day = (time_of_day + travel_time) % (t-1)
+        day_of_week = (day_of_week + (travel_time // (t-1)))%(d-1)
 
+        return time_of_day, day_of_week
+
+    def calc_travel_time(current_loc, start_loc, end_loc, time_of_day, day_of_week, Time_matrix):
+        """Returns t1: time taken from current location to start locations
+                   t2: time taken from start location to end location"""
+        if start_loc == 0 and end_loc == 0:
+            return 0, 1 #ride not accepeted by driver so increment time by 1 hour
+
+        if current_loc == start_loc:
+            t1 = 0
+        else:
+            t1 = int(Time_matrix[current_loc-1][start_location-1][time_of_day][day_of_week])
+            time_of_day, day_of_week = calc_new_time_and_day(time_of_day, day_of_week, t1)
+
+        t2 = int(Time_matrix[start_location-1][end_location-1][time_of_day][day_of_week])
+
+        return t1, t2
 
     def reward_func(self, state, action, Time_matrix):
         """Takes in state, action and Time-matrix and returns the reward"""
+        current_loc = state[0]
+        time_of_day = state[1]
+        day_of_week = state[2]
+        start_loc = action[0]
+        end_loc = action[1]
+
+        t1, t2 = calc_travel_time(current_loc, start_loc, end_loc, time_of_day, day_of_week, Time_matrix)
+
+        if start_loc != 0 or end_loc != 0: #action not (0,0)
+            reward = R * t2 - C * (t1 + t2)
+        else:
+            reward = -C
+
         return reward
-
-
 
 
     def next_state_func(self, state, action, Time_matrix):
         """Takes state and action as input and returns next state"""
+        current_loc = state[0]
+        time_of_day = state[1]
+        day_of_week = state[2]
+        start_loc = action[0]
+        end_loc = action[1]
+
+        t1, t2 = calc_travel_time(current_loc, start_loc, end_loc, time_of_day, day_of_week, Time_matrix)
+        total_travel_time = t1 + t2
+
+        if start_loc != 0 or end_loc != 0:
+            new_loc = end_loc
+        new_time_of_day, new_day_of_week = calc_new_time_and_day(time_of_day, day_of_week, total_travel_time)
+
+        next_state = (new_loc, new_time_of_day, new_day_of_week)
+
         return next_state
 
 
